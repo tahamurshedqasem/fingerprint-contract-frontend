@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>العقد الإلكتروني - الموافقة بالبصمة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* نفس الـ Styles السابقة */
+        .fingerprint-icon {
+            font-size: 48px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .fingerprint-icon.active {
+            color: #10b981;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .fingerprint-icon.inactive {
+            color: #9ca3af;
+        }
+        .fingerprint-icon.waiting {
+            color: #f59e0b;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .biometric-card {
+            border: 2px dashed #d1d5db;
+            transition: all 0.3s ease;
+        }
+        .biometric-card.signed {
+            border-color: #10b981;
+            background-color: #f0fdf4;
+        }
+        .biometric-card.waiting {
+            border-color: #f59e0b;
+            background-color: #fffbeb;
+        }
+        .signature-placeholder {
+            min-height: 60px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9fafb;
+            transition: all 0.3s;
+        }
+        .signature-placeholder.signed {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        .signature-placeholder .signature-text {
+            display: none;
+        }
+        .signature-placeholder.signed .signature-text {
+            display: block;
+        }
+        .signature-placeholder.signed .placeholder-text {
+            display: none;
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideDown 0.3s ease;
+            max-width: 90%;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .toast-success { background: #10b981; color: white; }
+        .toast-error { background: #ef4444; color: white; }
+        .toast-info { background: #3b82f6; color: white; }
+        .toast-warning { background: #f59e0b; color: white; }
+        
+        .contract-input {
+            border: 2px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .contract-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .contract-input.error {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .contract-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 300px;
+            transition: all 0.3s ease;
+        }
+        .contract-preview .highlight {
+            color: #2563eb;
+            font-weight: 600;
+        }
+        .contract-preview .field-empty {
+            color: #9ca3af;
+            font-style: italic;
+        }
+        .contract-preview .field-placeholder {
+            color: #d1d5db;
+            font-style: italic;
+            border-bottom: 2px dashed #d1d5db;
+            padding: 0 8px;
+            min-width: 80px;
+            display: inline-block;
+        }
+        .contract-preview .signature-box {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 12px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9fafb;
+            transition: all 0.3s ease;
+        }
+        .contract-preview .signature-box.filled {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        .live-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .empty-data-message {
+            color: #9ca3af;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        .empty-data-message i {
+            font-size: 48px;
+            color: #d1d5db;
+            margin-bottom: 12px;
+        }
+        .field-filled {
+            color: #1f2937;
+            font-weight: 600;
+        }
+        .evidence-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            font-family: monospace;
+            direction: ltr;
+            text-align: left;
+            overflow-wrap: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .evidence-label {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+            margin-top: 8px;
+            margin-bottom: 4px;
+        }
+        .verification-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .verification-badge.valid {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .verification-badge.invalid {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .no-print { /* سيتم إخفاؤها عند الطباعة */ }
+        @media print {
+            .no-print { display: none !important; }
+            .contract-preview { box-shadow: none !important; border: 1px solid #ddd !important; }
+            body { background: white !important; }
+            .max-w-4xl { box-shadow: none !important; border: 1px solid #ddd !important; }
+        }
+        .btn-clear {
+            background: #ef4444;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-clear:hover {
+            background: #dc2626;
+            transform: scale(1.02);
+        }
+        .btn-clear:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .fingerprint-status {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .fingerprint-status.loaded {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .fingerprint-status.loading {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .fingerprint-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+
+    <div id="toastContainer"></div>
+
+    <div class="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8" id="contractContainer">
+        <!-- عنوان العقد -->
+        <div class="border-b border-gray-200 pb-4 mb-6">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold text-gray-800 text-center flex-1">عقد تعاون وتقديم خصومات</h1>
+                <span class="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full no-print">
+                    <span class="live-indicator inline-block mr-1"></span>
+                    مباشر
+                </span>
+            </div>
+            <p class="text-sm text-gray-500 mt-1 text-center">رقم العقد: <span id="contractNumber" class="font-mono">جديد</span></p>
+        </div>
+
+        <!-- بنود العقد - عرض مباشر -->
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-100">
+            <div class="flex items-center gap-2 mb-4 no-print">
+                <i class="fas fa-file-contract text-blue-600"></i>
+                <span class="text-sm font-semibold text-blue-700">العقد - معاينة مباشرة</span>
+                <span class="text-xs text-gray-500">(املأ الحقول أدناه لترى العقد)</span>
+            </div>
+            <div id="contractPreview" class="contract-preview text-gray-700 space-y-3 leading-relaxed">
+                <div class="empty-data-message">
+                    <i class="fas fa-pen-fancy"></i>
+                    <p>املأ بيانات المؤسسة ونسبة الخصم</p>
+                    <p class="text-sm text-gray-400 mt-1">ستظهر تفاصيل العقد هنا فوراً</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- معلومات المؤسسة ونسبة الخصم -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 no-print">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">اسم المؤسسة <span class="text-red-500">*</span></label>
+                <input type="text" id="userName" value="" 
+                       placeholder="أدخل اسم المؤسسة"
+                       class="contract-input mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                       oninput="updateLiveContract()">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">رقم الجوال <span class="text-red-500">*</span></label>
+                <input type="tel" id="userPhone" value="" 
+                       placeholder="أدخل رقم الجوال"
+                       class="contract-input mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                       oninput="updateLiveContract()">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">نسبة الخصم (%) <span class="text-red-500">*</span></label>
+                <input type="number" id="discountPercentage" value="" 
+                       placeholder="أدخل النسبة"
+                       min="0" max="100"
+                       class="contract-input mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                       oninput="updateLiveContract()">
+            </div>
+        </div>
+
+        <!-- ====== قسم الإثبات ====== -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 no-print" id="proofSection">
+            <div class="flex items-center gap-2 mb-2">
+                <i class="fas fa-shield-alt text-amber-600"></i>
+                <span class="text-sm font-semibold text-amber-700">طبقات الإثبات</span>
+                <span class="text-xs text-amber-500">(لإثبات أن صاحب المؤسسة هو من بصم)</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div class="bg-white rounded-lg p-3 border border-amber-100">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-fingerprint text-blue-500"></i>
+                        <span class="font-medium">بصمة الجهاز:</span>
+                        <span id="deviceFingerprintDisplay" class="font-mono text-gray-600 text-xs">جاري التحميل...</span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg p-3 border border-amber-100">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-clock text-green-500"></i>
+                        <span class="font-medium">وقت التوقيع:</span>
+                        <span id="signTimeDisplay" class="text-gray-600">غير موقّع</span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg p-3 border border-amber-100">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-globe text-purple-500"></i>
+                        <span class="font-medium">الموقع:</span>
+                        <span id="locationDisplay" class="text-gray-600">جاري التحديد...</span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg p-3 border border-amber-100">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-mobile-alt text-red-500"></i>
+                        <span class="font-medium">المتصفح:</span>
+                        <span id="browserDisplay" class="text-gray-600">جاري التحميل...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3" id="challengeDisplay">
+                <div class="bg-white rounded-lg p-3 border border-amber-100">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-random text-indigo-500"></i>
+                        <span class="font-medium">رمز التحقق العشوائي:</span>
+                        <span id="challengeCode" class="font-mono text-indigo-600 font-bold">جاري التوليد...</span>
+                        <span class="text-xs text-gray-400 mr-2">(لا يمكن توقعه)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم البصمة والتوقيع -->
+        <div class="biometric-card rounded-xl p-6 mb-6 no-print" id="biometricSection">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <div class="fingerprint-icon inactive" id="fingerprintIcon">
+                        <i class="fas fa-fingerprint"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">الموافقة بالبصمة</h3>
+                        <p class="text-sm text-gray-500" id="biometricStatus">لم يتم التوقيع بعد</p>
+                    </div>
+                </div>
+                <button id="signButton" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200 flex items-center space-x-2 space-x-reverse">
+                    <i class="fas fa-fingerprint ml-2"></i>
+                    <span>تسجيل البصمة</span>
+                </button>
+            </div>
+
+            <!-- معلومات التوقيع عند اكتماله -->
+            <div id="signatureInfo" class="hidden mt-4 pt-4 border-t border-gray-200">
+                <div class="flex items-start space-x-4 space-x-reverse">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-check-circle text-green-500 text-2xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-green-700">✅ تم التوقيع بنجاح بواسطة البصمة</p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            تم التوقيع في: <span id="signedAt">-</span>
+                        </p>
+                        <p class="text-xs text-gray-500 break-all">
+                            المعرف: <span id="signatureId" class="font-mono text-xs">-</span>
+                        </p>
+                        <!-- أدلة إضافية -->
+                        <div class="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                            <p class="text-xs font-semibold text-green-700">
+                                <i class="fas fa-check-circle ml-1"></i>
+                                أدلة الإثبات المسجلة:
+                            </p>
+                            <ul class="text-xs text-gray-600 mt-1 space-y-1">
+                                <li>✓ بصمة الجهاز: <span id="proofDeviceFingerprint" class="font-mono">-</span></li>
+                                <li>✓ رمز التحقق: <span id="proofChallenge" class="font-mono">-</span></li>
+                                <li>✓ عنوان IP: <span id="proofIP" class="font-mono">-</span></li>
+                                <li>✓ المتصفح: <span id="proofBrowser">-</span></li>
+                            </ul>
+                        </div>
+                        <div id="qrCodeContainer" class="mt-2">
+                            <img id="qrCodeImage" src="" alt="QR Code" class="w-24 h-24 border rounded-lg">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- أزرار التحكم -->
+        <div class="flex flex-col sm:flex-row gap-3 no-print">
+            <button id="saveButton" 
+                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    disabled>
+                <i class="fas fa-save ml-2"></i>
+                حفظ العقد في قاعدة البيانات
+            </button>
+            <button id="screenshotButton" 
+                    class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    disabled>
+                <i class="fas fa-camera ml-2"></i>
+                أخذ لقطة شاشة
+            </button>
+            <button id="printButton" 
+                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    disabled>
+                <i class="fas fa-print ml-2"></i>
+                طباعة العقد
+            </button>
+            <button id="clearLocalStorageButton" 
+                    class="flex-1 btn-clear font-medium py-3 px-6 rounded-lg transition duration-200">
+                <i class="fas fa-trash ml-2"></i>
+                مسح البيانات المحفوظة
+            </button>
+        </div>
+
+        <input type="hidden" id="contractId" value="">
+        <input type="hidden" id="deviceFingerprint" value="">
+        <input type="hidden" id="challenge" value="">
+    </div>
+
+    <script>
+        // ============================================
+        // استخدام API بصمة الجهاز
+        // ============================================
+        const API_BASE = 'https://fingerprint-production-ac0c.up.railway.app/api';
+        let currentContract = null;
+        let isSigned = false;
+        let signatureHash = null;
+        let contractId = null;
+        let visitorId = null;
+
+        // ============================================
+        // توليد بصمة الجهاز الفريدة من API
+        // ============================================
+        async function getDeviceFingerprintFromAPI() {
+            try {
+                const response = await fetch(`${API_BASE}/fingerprint`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('📱 Fingerprint API Response:', data);
+
+                // استخراج البيانات
+                visitorId = data.visitorId || data.id || data.visitor_id || generateFallbackFingerprint();
+
+                // تحديث الواجهة
+                document.getElementById('deviceFingerprint').value = visitorId;
+                document.getElementById('deviceFingerprintDisplay').textContent = visitorId.substring(0, 30) + '...';
+
+                // تخزين في localStorage
+                localStorage.setItem('deviceFingerprint', visitorId);
+
+                return visitorId;
+
+            } catch (error) {
+                console.error('❌ Error getting fingerprint:', error);
+                
+                // استخدام طريقة احتياطية
+                const fallback = generateFallbackFingerprint();
+                visitorId = fallback;
+                document.getElementById('deviceFingerprint').value = fallback;
+                document.getElementById('deviceFingerprintDisplay').textContent = fallback.substring(0, 30) + '...';
+                
+                showToast('⚠️ استخدام بصمة احتياطية (تعذر الاتصال بـ API)', 'warning');
+                
+                return fallback;
+            }
+        }
+
+        // طريقة احتياطية لتوليد بصمة
+        function generateFallbackFingerprint() {
+            const components = [
+                navigator.userAgent,
+                navigator.language,
+                navigator.platform,
+                screen.width + 'x' + screen.height,
+                screen.colorDepth,
+                navigator.hardwareConcurrency || 'unknown',
+                navigator.deviceMemory || 'unknown',
+                new Date().getTimezoneOffset(),
+                navigator.maxTouchPoints || 'unknown'
+            ];
+            
+            const fingerprint = components.join('|||');
+            let hash = 0;
+            for (let i = 0; i < fingerprint.length; i++) {
+                const char = fingerprint.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return 'FALLBACK_' + Math.abs(hash).toString(36).toUpperCase() + '_' + Date.now().toString(36).toUpperCase();
+        }
+
+        // ============================================
+        // مسح البيانات من localStorage فقط
+        // ============================================
+        function clearLocalStorageData() {
+            if (confirm('⚠️ هل أنت متأكد من رغبتك في مسح البيانات المحفوظة محلياً؟\n\nسيتم حذف:\n- بيانات العقد الحالي\n- بصمة الجهاز\n- جميع البيانات المؤقتة\n\n⚠️ لن يتم حذف البيانات من قاعدة البيانات.')) {
+                
+                // حذف جميع مفاتيح localStorage المرتبطة بالعقد
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('contract') || key.includes('fingerprint') || key.includes('savedContract'))) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                // حذف المفاتيح
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                    console.log(`🗑️ تم حذف: ${key}`);
+                });
+
+                // إعادة تعيين المتغيرات
+                contractId = null;
+                currentContract = null;
+                isSigned = false;
+                signatureHash = null;
+                visitorId = null;
+
+                // إعادة تعيين الواجهة
+                document.getElementById('contractId').value = '';
+                document.getElementById('contractNumber').textContent = 'جديد';
+                document.getElementById('userName').value = '';
+                document.getElementById('userPhone').value = '';
+                document.getElementById('discountPercentage').value = '';
+                document.getElementById('signatureInfo').classList.add('hidden');
+                document.getElementById('saveButton').disabled = true;
+                document.getElementById('screenshotButton').disabled = true;
+                document.getElementById('printButton').disabled = true;
+                document.getElementById('biometricStatus').textContent = 'لم يتم التوقيع بعد';
+                document.getElementById('biometricStatus').className = 'text-sm text-gray-500';
+                document.getElementById('biometricSection').className = 'biometric-card rounded-xl p-6 mb-6';
+                document.getElementById('fingerprintIcon').className = 'fingerprint-icon inactive';
+                
+                // تحديث العقد
+                updateLiveContract();
+                
+                showToast('🗑️ تم مسح البيانات المحفوظة محلياً بنجاح', 'success');
+                
+                // إعادة تحميل بصمة الجهاز
+                setTimeout(() => {
+                    getDeviceFingerprintFromAPI();
+                }, 500);
+            }
+        }
+
+        // ============================================
+        // توليد تحدي عشوائي
+        // ============================================
+        function generateChallenge() {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return btoa(String.fromCharCode(...array));
+        }
+
+        // ============================================
+        // عرض العقد مباشرة أثناء الكتابة
+        // ============================================
+        function updateLiveContract() {
+            const userName = document.getElementById('userName').value.trim();
+            const userPhone = document.getElementById('userPhone').value.trim();
+            const discount = document.getElementById('discountPercentage').value.trim();
+            
+            const now = new Date();
+            const dateStr = `${now.getFullYear()} / ${String(now.getMonth() + 1).padStart(2, '0')} / ${String(now.getDate()).padStart(2, '0')}`;
+            
+            const hasData = userName || userPhone || discount;
+            
+            if (!hasData) {
+                document.getElementById('contractPreview').innerHTML = `
+                    <div class="empty-data-message">
+                        <i class="fas fa-pen-fancy"></i>
+                        <p>املأ بيانات المؤسسة ونسبة الخصم</p>
+                        <p class="text-sm text-gray-400 mt-1">ستظهر تفاصيل العقد هنا فوراً</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const displayName = userName || '<span class="field-placeholder">اسم المؤسسة</span>';
+            const displayPhone = userPhone || '<span class="field-placeholder">رقم الجوال</span>';
+            const displayDiscount = discount || '<span class="field-placeholder">النسبة</span>';
+            
+            const contractHTML = `
+                <div class="space-y-3">
+                    <p class="text-lg font-semibold text-center text-gray-800">عقد تعاون وتقديم خصومات</p>
+                    
+                    <p class="text-center text-sm text-gray-600">
+                        إنه في يوم: <span class="highlight">${dateStr}</span>
+                    </p>
+                    
+                    <p class="text-center text-gray-700">تم الاتفاق بين:</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        <div class="bg-white rounded-lg p-4 border border-gray-200">
+                            <p class="font-semibold text-blue-700">الطرف الأول:</p>
+                            <p class="text-gray-800">منصة تام (TAM)</p>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 border border-gray-200">
+                            <p class="font-semibold text-blue-700">الطرف الثاني:</p>
+                            <p class="${userName ? 'field-filled' : 'field-empty'}">
+                                ${displayName}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p><span class="font-semibold">اسم المؤسسة:</span> 
+                            <span class="${userName ? 'highlight' : 'field-empty'}">
+                                ${displayName}
+                            </span>
+                        </p>
+                        <p><span class="font-semibold">رقم الجوال:</span> 
+                            <span class="${userPhone ? 'highlight' : 'field-empty'}">
+                                ${displayPhone}
+                            </span>
+                        </p>
+                    </div>
+                    
+                    <div class="${discount ? 'bg-blue-50' : 'bg-gray-50'} rounded-lg p-4 border ${discount ? 'border-blue-200' : 'border-gray-200'}">
+                        <p class="text-center">
+                            على أن يقوم الطرف الثاني بتقديم خصم بنسبة 
+                            <span class="text-2xl font-bold ${discount ? 'text-blue-600' : 'text-gray-400'}">
+                                ${displayDiscount}%
+                            </span> 
+                            لأعضاء منصة تام على خدماته أو منتجاته، مقابل إدراج المؤسسة ضمن المؤسسات المشاركة في المنصة.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-yellow-50 rounded-lg p-3 border border-yellow-200 text-sm">
+                        <p class="text-center text-gray-700">
+                            <i class="fas fa-clock text-yellow-600 ml-1"></i>
+                            مدة الاتفاق: من تاريخ التوقيع وحتى إشعار أحد الطرفين بإنهائه.
+                        </p>
+                    </div>
+                    
+                    <p class="text-center text-gray-700 font-medium">
+                        وبهذا تم الاتفاق بين الطرفين وهما بكامل أهليتهما القانونية.
+                    </p>
+                    
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="border rounded-lg p-3 bg-white">
+                            <p class="font-semibold text-sm text-blue-700">الطرف الأول (تام)</p>
+                            <p class="text-sm">الاسم: <span class="font-medium">تام</span></p>
+                            <div class="signature-box mt-2">
+                                <span class="text-gray-400 text-sm">التوقيع: ___________</span>
+                            </div>
+                        </div>
+                        <div class="border rounded-lg p-3 bg-white">
+                            <p class="font-semibold text-sm text-blue-700">الطرف الثاني (المؤسسة)</p>
+                            <p class="text-sm">الاسم: <span class="${userName ? 'font-medium' : 'text-gray-400'}">${displayName}</span></p>
+                            <div class="signature-box mt-2 ${isSigned ? 'filled' : ''}">
+                                ${isSigned ? `
+                                    <div class="flex items-center gap-2 text-green-600">
+                                        <i class="fas fa-fingerprint text-2xl"></i>
+                                        <span class="text-sm font-semibold">تم التوقيع بالبصمة</span>
+                                    </div>
+                                ` : `
+                                    <span class="text-gray-400 text-sm">التوقيع: ___________</span>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-sm text-gray-500 mt-4 text-center">
+                        تاريخ التوقيع: <span class="font-semibold">${isSigned ? new Date().toLocaleString('ar-EG') : '___ / ___ / ______'}</span>
+                    </p>
+                </div>
+            `;
+            
+            document.getElementById('contractPreview').innerHTML = contractHTML;
+        }
+
+        // ============================================
+        // تحديث معلومات الإثبات
+        // ============================================
+        function updateProofInfo() {
+            // بصمة الجهاز من localStorage أو API
+            const savedFingerprint = localStorage.getItem('deviceFingerprint');
+            if (savedFingerprint) {
+                document.getElementById('deviceFingerprint').value = savedFingerprint;
+                document.getElementById('deviceFingerprintDisplay').textContent = savedFingerprint.substring(0, 30) + '...';
+            }
+            
+            // رمز التحقق العشوائي
+            const challenge = generateChallenge();
+            document.getElementById('challenge').value = challenge;
+            document.getElementById('challengeCode').textContent = challenge.substring(0, 16) + '...';
+            
+            // معلومات المتصفح
+            document.getElementById('browserDisplay').textContent = navigator.userAgent.substring(0, 50) + '...';
+            
+            // الموقع
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        document.getElementById('locationDisplay').textContent = 
+                            `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                    },
+                    function() {
+                        document.getElementById('locationDisplay').textContent = 'غير متاح';
+                    }
+                );
+            }
+        }
+
+        // ============================================
+        // Toast Notifications
+        // ============================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(-20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // ============================================
+        // API Calls
+        // ============================================
+        
+        async function createContract(userName, userPhone, discountPercentage) {
+            try {
+                const response = await fetch(`${API_BASE}/contracts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_name: userName,
+                        user_phone: userPhone,
+                        discount_percentage: parseFloat(discountPercentage)
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل إنشاء العقد');
+                }
+
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error creating contract:', error);
+                throw error;
+            }
+        }
+
+        async function getContract(id) {
+            try {
+                const response = await fetch(`${API_BASE}/contracts/${id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('فشل تحميل العقد');
+                }
+
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error loading contract:', error);
+                throw error;
+            }
+        }
+
+        async function signContract(id, signatureHash, signatureData, challenge, deviceFingerprint) {
+            try {
+                const response = await fetch(`${API_BASE}/contracts/${id}/sign`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        signature_hash: signatureHash,
+                        signature_data: signatureData,
+                        challenge: challenge,
+                        device_fingerprint: deviceFingerprint,
+                        screen_resolution: screen.width + 'x' + screen.height,
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل توقيع العقد');
+                }
+
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error signing contract:', error);
+                throw error;
+            }
+        }
+
+        async function saveContractData(id, contractData) {
+            try {
+                const response = await fetch(`${API_BASE}/contracts/${id}/save`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contract_data: JSON.stringify(contractData)
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'فشل حفظ العقد');
+                }
+
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error saving contract:', error);
+                throw error;
+            }
+        }
+
+        // ============================================
+        // Application Logic
+        // ============================================
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // تحميل بصمة الجهاز من الـ API
+            await getDeviceFingerprintFromAPI();
+            
+            // تحديث معلومات الإثبات
+            updateProofInfo();
+            
+            // تحديث العقد
+            updateLiveContract();
+            
+            await loadContract();
+            
+            document.getElementById('signButton').addEventListener('click', handleBiometricSign);
+            document.getElementById('saveButton').addEventListener('click', saveContract);
+            document.getElementById('screenshotButton').addEventListener('click', takeScreenshot);
+            document.getElementById('printButton').addEventListener('click', printContract);
+            document.getElementById('clearLocalStorageButton').addEventListener('click', clearLocalStorageData);
+            
+            document.getElementById('userName').addEventListener('input', updateLiveContract);
+            document.getElementById('userPhone').addEventListener('input', updateLiveContract);
+            document.getElementById('discountPercentage').addEventListener('input', updateLiveContract);
+        });
+
+        async function loadContract() {
+            try {
+                const savedContractId = localStorage.getItem('');
+                
+                if (savedContractId) {
+                    const response = await getContract(savedContractId);
+                    if (response.success) {
+                        const contract = response.contract;
+                        currentContract = contract;
+                        contractId = contract.id;
+                        document.getElementById('contractId').value = contract.id;
+                        document.getElementById('contractNumber').textContent = contract.contract_number;
+                        document.getElementById('userName').value = contract.user_name || '';
+                        document.getElementById('userPhone').value = contract.user_phone || '';
+                        document.getElementById('discountPercentage').value = contract.discount_percentage || '';
+                        
+                        if (contract.is_signed) {
+                            isSigned = true;
+                            signatureHash = contract.signature_hash;
+                            updateUIAfterSign(contract.user_name);
+                        }
+                        
+                        updateLiveContract();
+                        showToast('✅ تم تحميل العقد بنجاح', 'success');
+                        return;
+                    }
+                }
+                
+                document.getElementById('contractNumber').textContent = 'جديد';
+                updateLiveContract();
+                
+            } catch (error) {
+                console.error('Error loading contract:', error);
+            }
+        }
+
+        async function handleBiometricSign() {
+            const userName = document.getElementById('userName').value.trim();
+            const userPhone = document.getElementById('userPhone').value.trim();
+            const discountPercentage = document.getElementById('discountPercentage').value.trim();
+            
+            if (!userName) {
+                showToast('⚠️ الرجاء إدخال اسم المؤسسة', 'error');
+                document.getElementById('userName').focus();
+                document.getElementById('userName').classList.add('error');
+                setTimeout(() => document.getElementById('userName').classList.remove('error'), 3000);
+                return;
+            }
+            
+            if (!userPhone) {
+                showToast('⚠️ الرجاء إدخال رقم الجوال', 'error');
+                document.getElementById('userPhone').focus();
+                document.getElementById('userPhone').classList.add('error');
+                setTimeout(() => document.getElementById('userPhone').classList.remove('error'), 3000);
+                return;
+            }
+            
+            if (!discountPercentage || isNaN(discountPercentage) || discountPercentage < 0 || discountPercentage > 100) {
+                showToast('⚠️ الرجاء إدخال نسبة خصم صحيحة (0-100)', 'error');
+                document.getElementById('discountPercentage').focus();
+                document.getElementById('discountPercentage').classList.add('error');
+                setTimeout(() => document.getElementById('discountPercentage').classList.remove('error'), 3000);
+                return;
+            }
+
+            try {
+                const button = document.getElementById('signButton');
+                button.disabled = true;
+                button.innerHTML = '<span class="loading-spinner ml-2"></span> جاري التحقق...';
+                
+                const icon = document.getElementById('fingerprintIcon');
+                icon.className = 'fingerprint-icon waiting';
+                
+                document.getElementById('biometricSection').className = 'biometric-card rounded-xl p-6 mb-6 waiting';
+                document.getElementById('biometricStatus').textContent = 'جاري التحقق من البصمة...';
+                document.getElementById('biometricStatus').className = 'text-sm text-yellow-600';
+                
+                showToast('⏳ جاري قراءة البصمة... يرجى وضع إصبعك', 'info');
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // الحصول على بيانات الإثبات
+                const deviceFingerprint = document.getElementById('deviceFingerprint').value || visitorId || generateFallbackFingerprint();
+                const challenge = document.getElementById('challenge').value;
+
+                if (!contractId) {
+                    const createResponse = await createContract(userName, userPhone, discountPercentage);
+                    if (createResponse.success) {
+                        const contract = createResponse.contract;
+                        currentContract = contract;
+                        contractId = contract.id;
+                        document.getElementById('contractId').value = contract.id;
+                        document.getElementById('contractNumber').textContent = contract.contract_number;
+                        <!-- localStorage.setItem('currentContractId', contract.id); -->
+                    } else {
+                        throw new Error('فشل إنشاء العقد');
+                    }
+                }
+                
+                // توليد توقيع رقمي
+                const contractData = {
+                    contractId: contractId,
+                    user: userName,
+                    phone: userPhone,
+                    discount: discountPercentage,
+                    challenge: challenge,
+                    deviceFingerprint: deviceFingerprint,
+                    timestamp: new Date().toISOString()
+                };
+                
+                const contractString = JSON.stringify(contractData);
+                const encoder = new TextEncoder();
+                const dataBuffer = encoder.encode(contractString);
+                
+                const key = await crypto.subtle.generateKey(
+                    { name: 'HMAC', hash: 'SHA-256' },
+                    true,
+                    ['sign', 'verify']
+                );
+                
+                const signature = await crypto.subtle.sign(
+                    'HMAC',
+                    key,
+                    dataBuffer
+                );
+                
+                signatureHash = btoa(String.fromCharCode(...new Uint8Array(signature)));
+                
+                await signContract(
+                    contractId, 
+                    signatureHash, 
+                    JSON.stringify({
+                        signed_at: new Date().toISOString(),
+                        user_agent: navigator.userAgent,
+                        discount: discountPercentage,
+                        ip: await getIPAddress(),
+                        fingerprint_visitor_id: visitorId
+                    }),
+                    challenge,
+                    deviceFingerprint
+                );
+                
+                isSigned = true;
+                updateUIAfterSign(userName);
+                
+                showToast('✅ تم التوقيع بنجاح بواسطة البصمة!', 'success');
+                
+            } catch (error) {
+                console.error('Error during biometric authentication:', error);
+                
+                const icon = document.getElementById('fingerprintIcon');
+                icon.className = 'fingerprint-icon inactive';
+                document.getElementById('biometricSection').className = 'biometric-card rounded-xl p-6 mb-6';
+                document.getElementById('biometricStatus').textContent = 'فشل التوقيع';
+                document.getElementById('biometricStatus').className = 'text-sm text-red-600';
+                
+                showToast('❌ فشل التوقيع: ' + error.message, 'error');
+                
+            } finally {
+                const button = document.getElementById('signButton');
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-fingerprint ml-2"></i> تسجيل البصمة';
+            }
+        }
+
+        async function getIPAddress() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch {
+                return 'غير متاح';
+            }
+        }
+
+        function updateUIAfterSign(userName) {
+            const icon = document.getElementById('fingerprintIcon');
+            icon.className = 'fingerprint-icon active';
+            
+            document.getElementById('biometricStatus').textContent = '✅ تم التوقيع بواسطة البصمة';
+            document.getElementById('biometricStatus').className = 'text-sm text-green-600';
+            
+            document.getElementById('biometricSection').className = 'biometric-card rounded-xl p-6 mb-6 signed';
+            
+            const signatureInfo = document.getElementById('signatureInfo');
+            signatureInfo.classList.remove('hidden');
+            const now = new Date();
+            document.getElementById('signedAt').textContent = now.toLocaleString('ar-EG');
+            document.getElementById('signatureId').textContent = signatureHash.substring(0, 30) + '...';
+            
+            const fingerprint = document.getElementById('deviceFingerprint').value || visitorId || 'غير متاح';
+            const challenge = document.getElementById('challenge').value;
+            document.getElementById('proofDeviceFingerprint').textContent = fingerprint.substring(0, 20) + '...';
+            document.getElementById('proofChallenge').textContent = challenge.substring(0, 16) + '...';
+            document.getElementById('proofIP').textContent = 'جاري التحديد...';
+            document.getElementById('proofBrowser').textContent = navigator.userAgent.substring(0, 40) + '...';
+            document.getElementById('signTimeDisplay').textContent = now.toLocaleString('ar-EG');
+            
+            getIPAddress().then(ip => {
+                document.getElementById('proofIP').textContent = ip;
+            });
+            
+            const qrImage = document.getElementById('qrCodeImage');
+            const qrData = encodeURIComponent(JSON.stringify({
+                contract: currentContract.contract_number,
+                user: userName,
+                discount: document.getElementById('discountPercentage').value,
+                verified: true,
+                timestamp: now.toISOString(),
+                fingerprint: fingerprint.substring(0, 10),
+                challenge: challenge.substring(0, 10)
+            }));
+            qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}`;
+            
+            document.getElementById('saveButton').disabled = false;
+            document.getElementById('screenshotButton').disabled = false;
+            document.getElementById('printButton').disabled = false;
+            
+            updateLiveContract();
+        }
+
+        async function saveContract() {
+            if (!isSigned) {
+                showToast('⚠️ يجب التوقيع بالبصمة أولاً', 'error');
+                return;
+            }
+            
+            try {
+                showToast('💾 جاري حفظ العقد في قاعدة البيانات...', 'info');
+                
+                const saveBtn = document.getElementById('saveButton');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<span class="loading-spinner ml-2"></span> جاري الحفظ...';
+                
+                const contractData = {
+                    contract: currentContract,
+                    signature: signatureHash,
+                    signedAt: new Date().toISOString(),
+                    userName: document.getElementById('userName').value,
+                    userPhone: document.getElementById('userPhone').value,
+                    discountPercentage: document.getElementById('discountPercentage').value,
+                    deviceFingerprint: document.getElementById('deviceFingerprint').value || visitorId,
+                    challenge: document.getElementById('challenge').value,
+                    visitorId: visitorId
+                };
+                
+                await saveContractData(contractId, contractData);
+                
+                showToast('✅ تم حفظ العقد في قاعدة البيانات بنجاح! 🎉', 'success');
+                
+                saveBtn.innerHTML = '<i class="fas fa-check ml-2"></i> تم الحفظ';
+                saveBtn.className = 'flex-1 bg-gray-400 text-white font-medium py-3 px-6 rounded-lg cursor-default';
+                
+                localStorage.setItem('savedContract_' + contractId, JSON.stringify(contractData));
+                
+            } catch (error) {
+                console.error('Error saving contract:', error);
+                showToast('❌ فشل حفظ العقد: ' + error.message, 'error');
+                
+                const saveBtn = document.getElementById('saveButton');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save ml-2"></i> حفظ العقد في قاعدة البيانات';
+            }
+        }
+
+        // ============================================
+        // أخذ لقطة شاشة
+        // ============================================
+        function takeScreenshot() {
+            if (!isSigned) {
+                showToast('⚠️ يجب التوقيع بالبصمة قبل أخذ لقطة الشاشة', 'error');
+                return;
+            }
+            
+            showToast('📸 جاري أخذ لقطة الشاشة...', 'info');
+            window.print();
+            showToast('✅ تم فتح نافذة الطباعة، يمكنك حفظها كـ PDF', 'success');
+        }
+
+        // ============================================
+        // طباعة العقد
+        // ============================================
+        function printContract() {
+            if (!isSigned) {
+                showToast('⚠️ يجب التوقيع بالبصمة قبل طباعة العقد', 'error');
+                return;
+            }
+            
+            updateLiveContract();
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        }
+
+        // تحديث معلومات الإثبات كل 30 ثانية
+        setInterval(updateProofInfo, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقرير التحقق من التوقيع الإلكتروني</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen p-8">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-8">
+
+        <h1 class="text-2xl font-bold text-gray-800 text-center mb-6">📋 تقرير التحقق من التوقيع الإلكتروني</h1>
+        
+        <!-- نموذج البحث -->
+        <div class="flex gap-3 mb-6">
+            <input type="text" id="searchInput" 
+                   placeholder="أدخل رقم العقد (مثال: CTR-YCGGBOAXYY)"
+                   class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 outline-none text-lg"
+                   value="CTR-YCGGBOAXYY">
+            <button onclick="verifyContract()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition">
+                <i class="fas fa-search ml-2"></i>
+                بحث
+            </button>
+        </div>
+
+        <div id="loading" class="hidden text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+            <p class="text-gray-500 mt-2">جاري البحث عن العقد...</p>
+        </div>
+
+        <div id="errorMessage" class="hidden bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-4">
+            <i class="fas fa-exclamation-circle ml-2"></i>
+            <span id="errorText">حدث خطأ</span>
+        </div>
+
+        <div id="results" class="hidden">
+            <!-- حالة التحقق -->
+            <div id="statusBadge" class="rounded-xl p-6 mb-6 text-center">
+                <!-- سيتم تعبئتها -->
+            </div>
+
+            <!-- ملاحظة إذا كان العقد قديماً -->
+            <div id="oldContractNote" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-yellow-700">
+                <i class="fas fa-info-circle ml-2"></i>
+                <span>⚠️ هذا العقد تم توقيعه قبل تفعيل نظام الإثبات المتكامل. بعض بيانات الإثبات غير متوفرة، لكن التوقيع صحيح.</span>
+            </div>
+
+            <!-- معلومات العقد -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">رقم العقد</p>
+                    <p class="text-lg font-bold text-gray-800" id="contractNumber">-</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">تاريخ التوقيع</p>
+                    <p class="text-lg font-bold text-gray-800" id="signedDate">-</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">اسم المؤسسة</p>
+                    <p class="text-lg font-bold text-gray-800" id="userName">-</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">رقم الجوال</p>
+                    <p class="text-lg font-bold text-gray-800" id="userPhone">-</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">نسبة الخصم</p>
+                    <p class="text-lg font-bold text-gray-800" id="discount">-</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">عنوان IP</p>
+                    <p class="text-lg font-bold text-gray-800 font-mono" id="ipAddress">-</p>
+                </div>
+            </div>
+
+            <!-- أدلة الإثبات -->
+            <h3 class="text-lg font-bold text-gray-700 mb-4">🛡️ أدلة الإثبات الرقمية</h3>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="border rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">🔐 بصمة الجهاز</p>
+                    <p class="text-xs font-mono text-gray-700 break-all" id="deviceFingerprint">-</p>
+                    <p class="text-xs text-gray-400 mt-1" id="fingerprintStatus"></p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">🎲 رمز التحقق</p>
+                    <p class="text-xs font-mono text-gray-700 break-all" id="challenge">-</p>
+                    <p class="text-xs text-gray-400 mt-1" id="challengeStatus"></p>
+                </div>
+                <div class="border rounded-lg p-4 col-span-2">
+                    <p class="text-sm font-semibold text-gray-600">🔑 التوقيع الرقمي</p>
+                    <p class="text-xs font-mono text-gray-700 break-all" id="signatureHash">-</p>
+                    <p class="text-xs text-gray-400 mt-1" id="signatureStatus"></p>
+                </div>
+            </div>
+
+            <!-- معلومات الجهاز -->
+            <h3 class="text-lg font-bold text-gray-700 mb-4">💻 معلومات الجهاز والمتصفح</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="border rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">المتصفح</p>
+                    <p class="text-sm text-gray-700" id="browser">-</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">نظام التشغيل</p>
+                    <p class="text-sm text-gray-700" id="os">-</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">دقة الشاشة</p>
+                    <p class="text-sm text-gray-700" id="screenResolution">-</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-600">المنطقة الزمنية</p>
+                    <p class="text-sm text-gray-700" id="timezone">-</p>
+                </div>
+            </div>
+
+            <!-- نصيحة إذا كان العقد قديماً -->
+            <div id="adviceBox" class="hidden mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p class="text-sm text-blue-700">
+                    <i class="fas fa-lightbulb ml-2"></i>
+                    <span id="adviceText"></span>
+                </p>
+            </div>
+
+            <button onclick="window.print()" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg">
+                <i class="fas fa-print ml-2"></i>
+                طباعة التقرير
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+
+        async function verifyContract() {
+            const input = document.getElementById('searchInput');
+            const contractId = input.value.trim();
+            
+            if (!contractId) {
+                showError('الرجاء إدخال رقم العقد');
+                return;
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/contracts/verify/${encodeURIComponent(contractId)}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || `خطأ ${response.status}`);
+                }
+
+                if (!data.success) {
+                    throw new Error(data.message || 'فشل التحقق من العقد');
+                }
+
+                displayResults(data.verification);
+                document.getElementById('results').classList.remove('hidden');
+                document.getElementById('loading').classList.add('hidden');
+
+            } catch (error) {
+                console.error('❌ خطأ:', error);
+                showError(error.message);
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        function displayResults(v) {
+            // التحقق من وجود بيانات الإثبات
+            const hasFullEvidence = v.device_fingerprint && v.device_fingerprint !== 'غير متاح' && v.device_fingerprint !== '-';
+            const isOldContract = !hasFullEvidence && v.is_valid;
+
+            // حالة التحقق
+            const statusDiv = document.getElementById('statusBadge');
+            if (isOldContract) {
+                statusDiv.className = 'rounded-xl p-6 mb-6 text-center bg-yellow-50 border-2 border-yellow-500';
+                statusDiv.innerHTML = `
+                    <i class="fas fa-check-circle text-4xl text-yellow-500 mb-2"></i>
+                    <h2 class="text-xl font-bold text-yellow-700">✅ التوقيع صحيح (عقد قديم)</h2>
+                    <p class="text-sm text-yellow-600 mt-1">تم التوقيع قبل تفعيل نظام الإثبات المتكامل</p>
+                `;
+                document.getElementById('oldContractNote').classList.remove('hidden');
+            } else if (v.is_valid) {
+                statusDiv.className = 'rounded-xl p-6 mb-6 text-center bg-green-50 border-2 border-green-500';
+                statusDiv.innerHTML = `
+                    <i class="fas fa-check-circle text-4xl text-green-500 mb-2"></i>
+                    <h2 class="text-xl font-bold text-green-700">✅ التوقيع صحيح ومعتمد</h2>
+                    <p class="text-sm text-green-600 mt-1">${v.verification_status || 'تم التحقق من صحة التوقيع رقمياً'}</p>
+                `;
+                document.getElementById('oldContractNote').classList.add('hidden');
+            } else {
+                statusDiv.className = 'rounded-xl p-6 mb-6 text-center bg-red-50 border-2 border-red-500';
+                statusDiv.innerHTML = `
+                    <i class="fas fa-times-circle text-4xl text-red-500 mb-2"></i>
+                    <h2 class="text-xl font-bold text-red-700">❌ التوقيع غير صحيح</h2>
+                    <p class="text-sm text-red-600 mt-1">${v.verification_status || 'فشل التحقق من التوقيع'}</p>
+                `;
+                document.getElementById('oldContractNote').classList.add('hidden');
+            }
+
+            // ملء البيانات
+            document.getElementById('contractNumber').textContent = v.contract_number || '-';
+            document.getElementById('signedDate').textContent = v.signed_at ? new Date(v.signed_at).toLocaleString('ar-EG') : 'غير موقع';
+            document.getElementById('userName').textContent = v.signed_by || '-';
+            document.getElementById('userPhone').textContent = v.user_phone || '-';
+            document.getElementById('discount').textContent = v.discount_percentage ? v.discount_percentage + '%' : '-';
+            document.getElementById('ipAddress').textContent = v.ip_address || '-';
+
+            // أدلة الإثبات مع حالة
+            const fingerprint = v.device_fingerprint || '-';
+            document.getElementById('deviceFingerprint').textContent = fingerprint;
+            document.getElementById('fingerprintStatus').textContent = fingerprint !== '-' && fingerprint !== 'غير متاح' ? '✅ مسجلة' : '⚠️ غير مسجلة';
+
+            const challenge = v.challenge || '-';
+            document.getElementById('challenge').textContent = challenge;
+            document.getElementById('challengeStatus').textContent = challenge !== '-' && challenge !== 'غير متاح' ? '✅ مسجل' : '⚠️ غير مسجل';
+
+            const hash = v.signature_hash || '-';
+            document.getElementById('signatureHash').textContent = hash;
+            document.getElementById('signatureStatus').textContent = v.is_valid ? '✅ صالح' : '❌ غير صالح';
+
+            document.getElementById('browser').textContent = v.user_agent ? v.user_agent.substring(0, 60) + '...' : '-';
+            document.getElementById('os').textContent = v.user_agent ? getOS(v.user_agent) : '-';
+            document.getElementById('screenResolution').textContent = v.screen_resolution || '-';
+            document.getElementById('timezone').textContent = v.timezone || '-';
+
+            // نصيحة
+            const adviceBox = document.getElementById('adviceBox');
+            if (isOldContract) {
+                adviceBox.classList.remove('hidden');
+                document.getElementById('adviceText').textContent = 'هذا العقد تم توقيعه قبل تفعيل نظام الإثبات المتكامل. نوصي بإعادة توقيع العقد باستخدام النظام الجديد للحصول على أدلة إثبات كاملة.';
+            } else if (!v.is_valid) {
+                adviceBox.classList.remove('hidden');
+                document.getElementById('adviceText').textContent = 'فشل التحقق من صحة التوقيع. يرجى التواصل مع الدعم الفني للتحقق من صحة العقد.';
+            } else {
+                adviceBox.classList.add('hidden');
+            }
+        }
+
+        function getOS(userAgent) {
+            if (userAgent.includes('Windows')) return 'Windows';
+            if (userAgent.includes('Mac')) return 'macOS';
+            if (userAgent.includes('Linux')) return 'Linux';
+            if (userAgent.includes('Android')) return 'Android';
+            if (userAgent.includes('iOS')) return 'iOS';
+            return 'غير معروف';
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').classList.remove('hidden');
+            document.getElementById('errorText').textContent = message;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const contractId = urlParams.get('id');
+            if (contractId) {
+                document.getElementById('searchInput').value = contractId;
+                verifyContract();
+            } else {
+                // بحث تلقائي للعقد التجريبي
+                verifyContract();
+            }
+        });
+    </script>
+</body>
+</html>
